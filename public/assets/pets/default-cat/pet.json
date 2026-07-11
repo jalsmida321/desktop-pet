@@ -1,0 +1,79 @@
+{
+  "id": "default-cat",
+  "name": "Mochi Cat",
+  "version": 1,
+  "canvas": {
+    "width": 256,
+    "height": 256
+  },
+  "animations": {
+    "idle": {
+      "fps": 7,
+      "loop": true,
+      "frames": [
+        "sprites/idle-0.png",
+        "sprites/idle-1.png",
+        "sprites/idle-2.png"
+      ]
+    },
+    "type_left": {
+      "fps": 7,
+      "loop": false,
+      "durationMs": 360,
+      "frames": [
+        "sprites/type_left-0.png",
+        "sprites/type_left-1.png",
+        "sprites/type_left-2.png"
+      ]
+    },
+    "type_right": {
+      "fps": 7,
+      "loop": false,
+      "durationMs": 360,
+      "frames": [
+        "sprites/type_right-0.png",
+        "sprites/type_right-1.png",
+        "sprites/type_right-2.png"
+      ]
+    },
+    "click": {
+      "fps": 7,
+      "loop": false,
+      "durationMs": 650,
+      "frames": [
+        "sprites/click-0.png",
+        "sprites/click-1.png",
+        "sprites/click-2.png"
+      ]
+    },
+    "sleep": {
+      "fps": 2,
+      "loop": true,
+      "frames": [
+        "sprites/sleep-0.png",
+        "sprites/sleep-1.png",
+        "sprites/sleep-2.png"
+      ]
+    },
+    "error": {
+      "fps": 7,
+      "loop": false,
+      "durationMs": 650,
+      "frames": [
+        "sprites/error-0.png",
+        "sprites/error-1.png",
+        "sprites/error-2.png"
+      ]
+    },
+    "success": {
+      "fps": 7,
+      "loop": false,
+      "durationMs": 650,
+      "frames": [
+        "sprites/success-0.png",
+        "sprites/success-1.png",
+        "sprites/success-2.png"
+      ]
+    }
+  }
+}
