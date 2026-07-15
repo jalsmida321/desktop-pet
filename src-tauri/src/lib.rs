@@ -5,10 +5,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, State, WebviewWindow,
+    AppHandle, Emitter, LogicalSize, Manager, State, WebviewWindow,
 };
+
+const BASE_WINDOW_WIDTH: f64 = 560.0;
+const BASE_WINDOW_HEIGHT: f64 = 470.0;
+const MIN_PET_SCALE: f64 = 0.5;
+const MAX_PET_SCALE: f64 = 2.0;
 
 #[cfg(target_os = "windows")]
 use std::{
@@ -30,6 +35,7 @@ use windows_sys::Win32::{
 struct WindowSettings {
     always_on_top: bool,
     click_through: bool,
+    scale: f64,
 }
 
 impl Default for WindowSettings {
@@ -37,6 +43,7 @@ impl Default for WindowSettings {
         Self {
             always_on_top: true,
             click_through: false,
+            scale: 1.0,
         }
     }
 }
@@ -54,6 +61,10 @@ struct GlobalInputEvent {
     x: Option<i32>,
     y: Option<i32>,
     delta: Option<i32>,
+    window_x: Option<i32>,
+    window_y: Option<i32>,
+    window_width: Option<u32>,
+    window_height: Option<u32>,
     timestamp: u64,
 }
 
@@ -62,6 +73,26 @@ fn timestamp_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as u64
+}
+
+fn normalize_pet_scale(scale: f64) -> f64 {
+    let finite_scale = if scale.is_finite() { scale } else { 1.0 };
+    let clamped_scale = finite_scale.clamp(MIN_PET_SCALE, MAX_PET_SCALE);
+    (clamped_scale * 100.0).round() / 100.0
+}
+
+fn resize_pet_window(window: &WebviewWindow, scale: f64) -> Result<f64, String> {
+    let normalized_scale = normalize_pet_scale(scale);
+    let target_size = LogicalSize::new(
+        BASE_WINDOW_WIDTH * normalized_scale,
+        BASE_WINDOW_HEIGHT * normalized_scale,
+    );
+
+    window
+        .set_size(target_size)
+        .map_err(|error| error.to_string())?;
+
+    Ok(normalized_scale)
 }
 
 fn keyboard_hand(key_code: u32) -> &'static str {
@@ -122,6 +153,20 @@ fn set_always_on_top(
     Ok(enabled)
 }
 
+#[tauri::command]
+fn set_pet_scale(
+    window: WebviewWindow,
+    scale: f64,
+    state: State<'_, SettingsState>,
+) -> Result<f64, String> {
+    let applied_scale = resize_pet_window(&window, scale)?;
+    state.0.lock().map_err(|error| error.to_string())?.scale = applied_scale;
+    window
+        .emit("pet-scale-changed", applied_scale)
+        .map_err(|error| error.to_string())?;
+    Ok(applied_scale)
+}
+
 fn toggle_click_through(app: &AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
@@ -160,19 +205,60 @@ fn toggle_visibility(app: &AppHandle) {
     }
 }
 
+fn apply_pet_scale(app: &AppHandle, scale: f64) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(applied_scale) = resize_pet_window(&window, scale) else {
+        return;
+    };
+
+    let state = app.state::<SettingsState>();
+    if let Ok(mut settings) = state.0.lock() {
+        settings.scale = applied_scale;
+    }
+    let _ = window.emit("pet-scale-changed", applied_scale);
+}
+
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let visibility = MenuItem::with_id(app, "visibility", "显示/隐藏", true, None::<&str>)?;
-    let always_on_top = MenuItem::with_id(app, "always_on_top", "切换置顶", true, None::<&str>)?;
-    let click_through =
-        MenuItem::with_id(app, "click_through", "切换点击穿透", true, None::<&str>)?;
+    let visibility = MenuItem::with_id(app, "visibility", "Show / Hide", true, None::<&str>)?;
+    let always_on_top = MenuItem::with_id(
+        app,
+        "always_on_top",
+        "Toggle Always On Top",
+        true,
+        None::<&str>,
+    )?;
+    let click_through = MenuItem::with_id(
+        app,
+        "click_through",
+        "Toggle Click Through",
+        true,
+        None::<&str>,
+    )?;
+    let scale_50 = MenuItem::with_id(app, "scale_50", "50%", true, None::<&str>)?;
+    let scale_75 = MenuItem::with_id(app, "scale_75", "75%", true, None::<&str>)?;
+    let scale_100 = MenuItem::with_id(app, "scale_100", "100%", true, None::<&str>)?;
+    let scale_125 = MenuItem::with_id(app, "scale_125", "125%", true, None::<&str>)?;
+    let scale_150 = MenuItem::with_id(app, "scale_150", "150%", true, None::<&str>)?;
+    let scale_200 = MenuItem::with_id(app, "scale_200", "200%", true, None::<&str>)?;
+    let scale_menu = Submenu::with_items(
+        app,
+        "Pet Size",
+        true,
+        &[
+            &scale_50, &scale_75, &scale_100, &scale_125, &scale_150, &scale_200,
+        ],
+    )?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
             &visibility,
             &always_on_top,
             &click_through,
+            &scale_menu,
             &separator,
             &quit,
         ],
@@ -180,12 +266,18 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
     let mut tray = TrayIconBuilder::with_id("desktop-pet-tray")
         .menu(&menu)
-        .tooltip("Mochi Cat")
+        .tooltip("Usagi Desk Sync")
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "visibility" => toggle_visibility(app),
             "always_on_top" => toggle_always_on_top(app),
             "click_through" => toggle_click_through(app),
+            "scale_50" => apply_pet_scale(app, 0.5),
+            "scale_75" => apply_pet_scale(app, 0.75),
+            "scale_100" => apply_pet_scale(app, 1.0),
+            "scale_125" => apply_pet_scale(app, 1.25),
+            "scale_150" => apply_pet_scale(app, 1.5),
+            "scale_200" => apply_pet_scale(app, 2.0),
             "quit" => app.exit(0),
             _ => {}
         });
@@ -222,6 +314,10 @@ unsafe extern "system" fn keyboard_hook(code: i32, w_param: WPARAM, l_param: LPA
                     x: None,
                     y: None,
                     delta: None,
+                    window_x: None,
+                    window_y: None,
+                    window_width: None,
+                    window_height: None,
                     timestamp: timestamp_ms(),
                 });
             }
@@ -268,6 +364,10 @@ unsafe extern "system" fn mouse_hook(code: i32, w_param: WPARAM, l_param: LPARAM
                 x: Some(data.pt.x),
                 y: Some(data.pt.y),
                 delta,
+                window_x: None,
+                window_y: None,
+                window_width: None,
+                window_height: None,
                 timestamp: now,
             });
         }
@@ -283,7 +383,19 @@ fn start_global_input_listener(app: AppHandle) {
     }
 
     thread::spawn(move || {
-        for event in receiver {
+        for mut event in receiver {
+            if event.kind == "mouse_move" {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Ok(position) = window.outer_position() {
+                        event.window_x = Some(position.x);
+                        event.window_y = Some(position.y);
+                    }
+                    if let Ok(size) = window.outer_size() {
+                        event.window_width = Some(size.width);
+                        event.window_height = Some(size.height);
+                    }
+                }
+            }
             let _ = app.emit("global-input", event);
         }
     });
@@ -320,9 +432,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_dragging,
             set_click_through,
-            set_always_on_top
+            set_always_on_top,
+            set_pet_scale
         ])
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_ignore_cursor_events(false)?;
+            }
             build_tray(app.handle())?;
             start_global_input_listener(app.handle().clone());
             Ok(())
@@ -335,4 +451,17 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running desktop pet");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pet_scale_is_clamped_and_rounded() {
+        assert_eq!(normalize_pet_scale(f64::NAN), 1.0);
+        assert_eq!(normalize_pet_scale(0.2), MIN_PET_SCALE);
+        assert_eq!(normalize_pet_scale(2.4), MAX_PET_SCALE);
+        assert_eq!(normalize_pet_scale(1.249), 1.25);
+    }
 }

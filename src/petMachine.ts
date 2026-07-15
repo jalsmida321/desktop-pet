@@ -21,6 +21,10 @@ export interface GlobalInputEvent {
   x?: number
   y?: number
   delta?: number
+  windowX?: number
+  windowY?: number
+  windowWidth?: number
+  windowHeight?: number
   timestamp: number
 }
 

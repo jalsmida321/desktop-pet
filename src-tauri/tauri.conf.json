@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Mochi Cat",
+  "productName": "Usagi Desk Sync",
   "version": "0.1.0",
-  "identifier": "com.example.mochicat",
+  "identifier": "com.desktop-pet.usagi-sync",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
@@ -13,11 +13,13 @@
     "windows": [
       {
         "label": "main",
-        "title": "Mochi Cat",
-        "width": 320,
-        "height": 310,
-        "minWidth": 260,
-        "minHeight": 250,
+        "title": "Usagi Desk Sync",
+        "width": 560,
+        "height": 470,
+        "minWidth": 280,
+        "minHeight": 235,
+        "maxWidth": 1120,
+        "maxHeight": 940,
         "resizable": false,
         "decorations": false,
         "transparent": true,

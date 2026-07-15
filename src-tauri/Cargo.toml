@@ -1,8 +1,8 @@
 [package]
 name = "desktop-pet"
 version = "0.1.0"
-description = "A tiny Windows desktop pet built with Tauri 2"
-authors = ["Desktop Pet"]
+description = "A half-body Usagi desktop pet synchronized with global input"
+authors = ["Desktop Pet Studio"]
 edition = "2021"
 
 [lib]

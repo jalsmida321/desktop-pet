@@ -1,13 +1,15 @@
 .pet-stage {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 560px;
+  height: 470px;
   display: grid;
   place-items: end center;
   overflow: hidden;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  transform: scale(var(--pet-window-scale));
+  transform-origin: top left;
 }
 
 .pet-stage:active {
@@ -15,15 +17,16 @@
 }
 
 .pet-motion {
-  width: 280px;
-  height: 280px;
-  display: grid;
-  place-items: center;
-  transform-origin: 50% 92%;
+  position: relative;
+  width: min(100%, 540px);
+  aspect-ratio: 52 / 43;
+  transform-origin: 50% 96%;
+  animation: desk-breathe 3.8s ease-in-out infinite;
   will-change: transform;
 }
 
 .pet-motion.is-charging {
+  animation: none;
   transform: scale(var(--press-scale-x), var(--press-scale-y));
 }
 
@@ -36,15 +39,172 @@
 }
 
 .pet-sprite {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   pointer-events: none;
-  filter: drop-shadow(0 10px 7px rgb(49 42 38 / 18%));
+  filter: drop-shadow(0 10px 7px rgb(49 37 38 / 16%));
+  transform: translate(var(--head-shift-x), var(--head-shift-y));
+}
+
+.pet-eyes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 90ms ease;
+}
+
+.pet-eyes.are-hidden {
+  opacity: 0;
+}
+
+.pupil {
+  position: absolute;
+  top: 39.8%;
+  width: 13px;
+  height: 18px;
+  border: 3px solid #33252b;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 25%, #fff 0 12%, transparent 13%),
+    #33252b;
+  transform: translate(
+    calc(-50% + var(--gaze-x) + var(--head-shift-x)),
+    calc(-50% + var(--gaze-y) + var(--head-shift-y))
+  );
+}
+
+.pupil-left {
+  left: 42.1%;
+}
+
+.pupil-right {
+  left: 57.9%;
+}
+
+.keyboard {
+  position: absolute;
+  z-index: 3;
+  left: 24.3%;
+  bottom: 9.2%;
+  width: 51.4%;
+  height: 20.2%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 8px 8px;
+  border: 5px solid #33252b;
+  border-radius: 7px;
+  background: #d9e5e9;
+  box-shadow:
+    inset 0 -7px 0 #91a4aa,
+    0 5px 0 rgb(109 62 53 / 24%);
+  transform: perspective(400px) rotateX(9deg);
+  transform-origin: bottom center;
+}
+
+.keyboard-row {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  gap: 3px;
+}
+
+.keyboard kbd {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #7d898e;
+  border-radius: 3px;
+  background: #fffdf6;
+  box-shadow: inset 0 -2px 0 #c3c9ca;
+  color: #665b55;
+  font: 700 7px/1 "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  transition:
+    transform 55ms ease,
+    color 55ms ease,
+    background 55ms ease,
+    box-shadow 55ms ease;
+}
+
+.keyboard kbd.is-active {
+  background: #ffd653;
+  box-shadow:
+    inset 0 1px 0 #e4ad31,
+    0 0 0 2px rgb(255 214 83 / 42%);
+  color: #33252b;
+  transform: translateY(2px);
+}
+
+.desk-mouse {
+  position: absolute;
+  z-index: 4;
+  right: 8.9%;
+  bottom: 10.7%;
+  width: 35px;
+  height: 51px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border: 5px solid #33252b;
+  border-radius: 18px 18px 15px 15px;
+  background: #e75d68;
+  transform: rotate(8deg);
+}
+
+.desk-mouse::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 4px;
+  height: 9px;
+  border-radius: 2px;
+  background: #33252b;
+  transform: translateX(-50%);
+}
+
+.desk-mouse span {
+  border-bottom: 2px solid rgb(51 37 43 / 38%);
+  transition: background 60ms ease;
+}
+
+.desk-mouse span:first-child {
+  border-right: 1px solid rgb(51 37 43 / 38%);
+}
+
+.desk-mouse span.is-pressed {
+  background: #ffd653;
+}
+
+.state-type_left .pet-sprite {
+  transform: translate(calc(var(--head-shift-x) - 2px), var(--head-shift-y));
+}
+
+.state-type_right .pet-sprite {
+  transform: translate(calc(var(--head-shift-x) + 2px), var(--head-shift-y));
+}
+
+.state-sleep .pet-motion {
+  animation: sleep-breathe 4.8s ease-in-out infinite;
+}
+
+.state-success .pet-motion {
+  animation: success-pop 700ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.state-error .pet-motion {
+  animation: error-shake 380ms ease-in-out 2;
 }
 
 .state-label {
   position: absolute;
+  z-index: 10;
   top: 10px;
   left: 50%;
   max-width: calc(100% - 32px);
@@ -52,9 +212,9 @@
   transform: translateX(-50%) translateY(-5px);
   border: 1px solid rgb(42 39 45 / 12%);
   border-radius: 6px;
-  background: rgb(255 255 255 / 78%);
+  background: rgb(255 255 255 / 82%);
   color: #343037;
-  font: 600 11px/1.2 "Segoe UI", sans-serif;
+  font: 700 11px/1.2 "Segoe UI", sans-serif;
   letter-spacing: 0;
   text-transform: uppercase;
   opacity: 0;
@@ -64,9 +224,91 @@
   backdrop-filter: blur(8px);
 }
 
+.scale-label {
+  position: absolute;
+  z-index: 11;
+  top: 43px;
+  right: 10px;
+  min-width: 42px;
+  padding: 4px 7px;
+  border: 1px solid rgb(42 39 45 / 12%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 86%);
+  color: #343037;
+  font: 700 11px/1.2 "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
+.scale-label.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scale-controls {
+  position: absolute;
+  z-index: 12;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 3px;
+  opacity: 0.28;
+  transform: translateY(0);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: auto;
+}
+
+.pet-stage:hover .scale-controls,
+.scale-controls:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.scale-controls button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(42 39 45 / 15%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 2px 8px rgb(42 39 45 / 10%);
+  color: #343037;
+  font: 700 16px/1 "Segoe UI Symbol", "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.scale-controls button:hover:not(:disabled) {
+  background: #ffd653;
+}
+
+.scale-controls button:focus-visible {
+  outline: 2px solid #e75d68;
+  outline-offset: 1px;
+}
+
+.scale-controls button:disabled {
+  color: rgb(52 48 55 / 36%);
+  cursor: default;
+}
+
 .pet-stage:hover .state-label,
 .state-error .state-label,
-.state-success .state-label {
+.state-success .state-label,
+.state-sleep .state-label {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
@@ -80,17 +322,65 @@
 }
 
 .pet-loading {
-  width: 150px;
-  height: 110px;
-  margin-bottom: 38px;
-  border-radius: 50% 50% 42% 42%;
-  background: rgb(255 255 255 / 45%);
-  animation: breathe 900ms ease-in-out infinite alternate;
+  position: absolute;
+  left: 50%;
+  bottom: 80px;
+  width: 230px;
+  height: 170px;
+  border-radius: 50%;
+  background: rgb(255 242 190 / 70%);
+  animation: desk-breathe 1.2s ease-in-out infinite alternate;
+  transform: translateX(-50%);
 }
 
-@keyframes breathe {
-  to {
-    transform: translateY(-2px) scale(1.01);
+@keyframes desk-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-1px) scale(1.002, 1.004);
+  }
+}
+
+@keyframes sleep-breathe {
+  0%,
+  100% {
+    transform: translateY(1px) scale(1.006, 0.994);
+  }
+
+  50% {
+    transform: translateY(0) scale(0.998, 1.004);
+  }
+}
+
+@keyframes success-pop {
+  0% {
+    transform: scale(0.92, 1.08) translateY(4px);
+  }
+
+  48% {
+    transform: scale(1.04, 0.97) translateY(-5px);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  30% {
+    transform: translateX(-5px) rotate(-0.8deg);
+  }
+
+  70% {
+    transform: translateX(5px) rotate(0.8deg);
   }
 }
 
@@ -118,7 +408,7 @@
   }
 
   26% {
-    transform: scale(0.9, 1.2) translateY(-8px);
+    transform: scale(0.9, 1.2) translateY(-10px);
   }
 
   52% {
